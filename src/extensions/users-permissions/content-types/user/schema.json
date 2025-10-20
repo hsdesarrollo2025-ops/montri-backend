@@ -1,20 +1,13 @@
 {
-  "collectionName": "users",
+  "collectionName": "up_users",
   "info": {
     "singularName": "user",
     "pluralName": "users",
-    "displayName": "User",
-    "description": ""
+    "displayName": "User"
   },
   "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {
-    "users-permissions": {
-      "advanced": {
-        "defaultRole": "authenticated"
-      }
-    }
+    "draftAndPublish": false,
+    "timestamps": true
   },
   "attributes": {
     "username": {
@@ -29,49 +22,32 @@
       "required": true,
       "unique": true
     },
-    "provider": {
-      "type": "string",
-      "default": "local"
-    },
     "password": {
       "type": "password",
       "minLength": 8,
       "required": true
     },
-    "firstName": {
-      "type": "string",
-      "required": true
-    },
-    "lastName": {
-      "type": "string",
-      "required": true
-    },
-    "cuit": {
-      "type": "string"
-    },
+    "firstName": { "type": "string" },
+    "lastName": { "type": "string" },
     "planType": {
       "type": "enumeration",
       "enum": ["free", "pro", "premium"],
       "default": "free"
     },
-    "acceptedTerms": {
-      "type": "boolean",
-      "default": false,
-      "required": true
-    },
-    "confirmed": {
-      "type": "boolean",
-      "default": false
-    },
-    "blocked": {
-      "type": "boolean",
-      "default": false
-    },
-    "role": {
+    "acceptedTerms": { "type": "boolean", "default": false },
+    "confirmed": { "type": "boolean", "default": false },
+    "blocked": { "type": "boolean", "default": false },
+    "roles": {
       "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::users-permissions.role",
-      "inversedBy": "users"
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.role"
+    },
+    "fiscalProfile": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::fiscal-profile.fiscal-profile",
+      "mappedBy": "user"
     }
   }
 }
+

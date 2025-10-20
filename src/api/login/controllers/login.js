@@ -44,7 +44,6 @@ module.exports = {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          cuit: user.cuit,
           planType: user.planType,
           provider: user.provider,
         },
@@ -55,4 +54,3 @@ module.exports = {
     }
   },
 };
-
