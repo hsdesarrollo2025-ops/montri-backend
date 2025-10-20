@@ -1,5 +1,5 @@
 {
-  "collectionName": "up_users",
+  "collectionName": "users",
   "info": {
     "singularName": "user",
     "pluralName": "users",
@@ -50,4 +50,3 @@
     }
   }
 }
-
