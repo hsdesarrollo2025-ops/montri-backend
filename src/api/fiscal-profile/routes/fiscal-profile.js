@@ -4,8 +4,8 @@ module.exports = {
   routes: [
     // Init profile
     { method: 'POST', path: '/fiscal-profile/init', handler: 'fiscal-profile.init', config: { auth: false } },
-    // Current user profile (requires auth)
-    { method: 'GET', path: '/fiscal-profile/me', handler: 'fiscal-profile.me', config: { auth: true } },
+    // Current user profile (controller enforces auth via JWT)
+    { method: 'GET', path: '/fiscal-profile/me', handler: 'fiscal-profile.me', config: { auth: false } },
     // Section A
     { method: 'PUT', path: '/fiscal-profile/section/A', handler: 'fiscal-profile.updateSectionA', config: { auth: false } },
     { method: 'PUT', path: '/fiscal-profile/section/B', handler: 'fiscal-profile.updateSectionB', config: { auth: false } },
