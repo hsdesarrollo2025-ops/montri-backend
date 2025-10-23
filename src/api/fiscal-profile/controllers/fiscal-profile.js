@@ -278,6 +278,23 @@ module.exports = {
   init,
   updateSectionA,
   updateSectionC,
+  async me(ctx) {
+    try {
+      const authUserId = ctx.state?.user?.id || (await getAuthUserId(ctx));
+      if (!authUserId) return ctx.unauthorized('No autenticado');
+
+      const profile = await strapi.db
+        .query('api::fiscal-profile.fiscal-profile')
+        .findOne({ where: { user: authUserId } });
+
+      if (!profile) return ctx.notFound('Perfil fiscal no encontrado');
+
+      return ctx.send({ message: 'Perfil fiscal obtenido correctamente.', profile });
+    } catch (error) {
+      strapi.log.error('Error en endpoint /fiscal-profile/me:', error);
+      return ctx.internalServerError('Ocurrió un error al obtener el perfil fiscal.');
+    }
+  },
   async updateSectionB(ctx) {
     try {
       const userId = await getAuthUserId(ctx);
