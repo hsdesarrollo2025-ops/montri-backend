@@ -307,8 +307,39 @@ module.exports = {
 
       const data = ctx.request.body || {};
       const errors = [];
+      const isDraft = String(ctx.query?.draft).toLowerCase() === 'true';
+
+      // Map optional alternative input names while preserving existing behavior
+      const revenueNumber = Number(
+        data.annualEstimatedRevenue != null ? data.annualEstimatedRevenue : data.annualRevenue
+      );
+
+      // Validate against selected tax category by ID (if provided)
+      if (data.categoryId != null) {
+        const category = await strapi.db
+          .query('api::tax-category.tax-category')
+          .findOne({ where: { id: data.categoryId } });
+
+        if (!category) {
+          return ctx.badRequest('Categoría fiscal no encontrada.');
+        }
+
+        const maxAllowed = Number(
+          category.maxAnnualRevenue != null ? category.maxAnnualRevenue : category.grossIncomeLimit
+        );
+
+        if (Number.isFinite(revenueNumber) && revenueNumber > maxAllowed) {
+          const formatter = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+          const formattedMax = formatter.format(maxAllowed);
+          const displayName = category.name || category.code || 'seleccionada';
+          return ctx.badRequest(
+            `La facturación anual estimada no puede superar el máximo permitido para la categoría ${displayName} (${formattedMax}).`
+          );
+        }
+      }
 
       // Validaciones base
+      if (!isDraft) {
       if (!['Monotributista', 'Responsible Inscripto'].includes(data.regime))
         errors.push('El régimen fiscal es inválido.');
 
@@ -316,7 +347,6 @@ module.exports = {
       else if (new Date(data.startDate) > new Date())
         errors.push('La fecha de alta no puede ser futura.');
 
-      const revenueNumber = Number(data.annualRevenue);
       if (!Number.isFinite(revenueNumber) || revenueNumber <= 0)
         errors.push('La facturación anual estimada debe ser mayor que 0.');
 
@@ -326,9 +356,10 @@ module.exports = {
         errors.push('El tipo de clientes es inválido.');
       if (data.monthlyOperations != null && Number(data.monthlyOperations) < 0)
         errors.push('Las operaciones mensuales no pueden ser negativas.');
+      }
 
       // Validaciones específicas por régimen
-      if (data.regime === 'Monotributista') {
+      if (data.regime === 'Monotributista' && !isDraft) {
         if (!data.category) {
           errors.push('Debe seleccionar la categoría fiscal.');
         } else {
