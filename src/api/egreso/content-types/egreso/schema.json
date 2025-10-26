@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "egresos",
+  "info": {
+    "singularName": "egreso",
+    "pluralName": "egresos",
+    "displayName": "Egreso"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "descripcion": { "type": "text", "required": true },
+    "monto": { "type": "decimal", "required": true },
+    "fecha": { "type": "date", "required": true },
+    "categoria": {
+      "type": "enumeration",
+      "enum": ["Transporte", "Oficina", "Servicios", "Otros"]
+    },
+    "metodo_pago": {
+      "type": "enumeration",
+      "enum": ["Efectivo", "Transferencia", "Tarjeta"]
+    },
+    "deducible": { "type": "boolean", "default": false },
+    "comprobante": { "type": "text" },
+    "usuario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    }
+  }
+}
+

@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ingresos",
+  "info": {
+    "singularName": "ingreso",
+    "pluralName": "ingresos",
+    "displayName": "Ingreso"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "descripcion": { "type": "text", "required": true },
+    "monto": { "type": "decimal", "required": true },
+    "fecha": { "type": "date", "required": true },
+    "categoria": {
+      "type": "enumeration",
+      "enum": ["Servicios", "Ventas", "Otros"]
+    },
+    "metodo_cobro": {
+      "type": "enumeration",
+      "enum": ["Efectivo", "Transferencia", "MercadoPago", "Tarjeta"]
+    },
+    "comprobante": { "type": "text" },
+    "usuario": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    }
+  }
+}
+
