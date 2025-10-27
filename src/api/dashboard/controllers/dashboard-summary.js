@@ -1,6 +1,6 @@
 'use strict';
 
-// Helper para obtener ID del usuario autenticado (mismo patrón que fiscal-profile)
+// Helper para obtener ID del usuario autenticado
 async function getAuthUserId(ctx) {
   if (ctx.state?.user?.id) return ctx.state.user.id;
   const auth = ctx.request.header?.authorization || '';
@@ -9,77 +9,103 @@ async function getAuthUserId(ctx) {
   try {
     const payload = await strapi.plugins['users-permissions'].services.jwt.verify(token);
     return payload?.id || null;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
 
+function safeNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function safeDate(v) {
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 module.exports = {
-  async summary(ctx) {
+  async find(ctx) {
     try {
       const userId = await getAuthUserId(ctx);
-      if (!userId) return ctx.unauthorized('No autorizado');
+      if (!userId) return ctx.unauthorized('Usuario no autenticado');
 
-      // Calcular primer día del mes actual y el primer día del mes siguiente
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-      // Buscar ingresos del mes (por campo fecha) con fallbacks
+      // Ingresos del mes
       let ingresos = [];
       try {
         ingresos = await strapi.db.query('api::ingreso.ingreso').findMany({
-          where: { user: userId, fecha: { $gte: startOfMonth, $lt: startOfNextMonth } },
-          select: ['monto'],
+          where: { usuario: userId, fecha: { $gte: start, $lt: next } },
+          select: ['id', 'descripcion', 'fecha', 'monto'],
+          orderBy: { fecha: 'desc' },
         });
-      } catch {
-        try {
-          ingresos = await strapi.db.query('api::ingresos.ingresos').findMany({
-            where: { usuario: userId, fecha: { $gte: startOfMonth, $lt: startOfNextMonth } },
-            select: ['monto'],
-          });
-        } catch {}
-      }
+      } catch {}
 
-      // Buscar egresos del mes (por campo fecha) con fallbacks
+      // Egresos del mes
       let egresos = [];
       try {
         egresos = await strapi.db.query('api::egreso.egreso').findMany({
-          where: { user: userId, fecha: { $gte: startOfMonth, $lt: startOfNextMonth } },
-          select: ['monto', 'deducible'],
+          where: { usuario: userId, fecha: { $gte: start, $lt: next } },
+          select: ['id', 'descripcion', 'fecha', 'monto'],
+          orderBy: { fecha: 'desc' },
         });
-      } catch {
-        try {
-          egresos = await strapi.db.query('api::egresos.egresos').findMany({
-            where: { usuario: userId, fecha: { $gte: startOfMonth, $lt: startOfNextMonth } },
-            select: ['monto', 'deducible'],
-          });
-        } catch {}
-      }
+      } catch {}
 
-      const toNumber = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
+      const resumen = (records) => {
+        const current = (records || []).filter((r) => {
+          const d = safeDate(r.fecha);
+          return d && d >= start && d < next;
+        });
+        const totalMes = current.reduce((acc, r) => acc + safeNumber(r.monto), 0);
+        const semanal = [1, 2, 3, 4].map((sem) => ({
+          semana: sem,
+          monto: current
+            .filter((r) => {
+              const d = safeDate(r.fecha);
+              return d && Math.ceil(d.getDate() / 7) === sem;
+            })
+            .reduce((acc, r) => acc + safeNumber(r.monto), 0),
+        }));
+        const ultimos = (records || [])
+          .filter((r) => safeDate(r.fecha))
+          .slice(0, 5)
+          .map((r) => {
+            const d = safeDate(r.fecha);
+            return {
+              id: r.id,
+              descripcion: r.descripcion || 'Sin descripción',
+              fecha: d ? d.toISOString().slice(0, 10) : null,
+              monto: safeNumber(r.monto),
+            };
+          });
+        return { totalMes, semanal, ultimos };
       };
 
-      const totalIngresos = (ingresos || []).reduce((sum, i) => sum + toNumber(i.monto), 0);
-      const totalEgresos = (egresos || []).reduce((sum, e) => sum + toNumber(e.monto), 0);
-      const totalDeducibles = (egresos || [])
-        .filter((e) => e?.deducible === true)
-        .reduce((sum, e) => sum + toNumber(e.monto), 0);
+      const ingresosSummary = resumen(ingresos);
+      const egresosSummary = resumen(egresos);
 
-      const saldoEstimado = totalIngresos - totalDeducibles;
+      const totalIngresos = ingresosSummary.totalMes;
+      const totalEgresos = egresosSummary.totalMes;
+      const balanceNeto = totalIngresos - totalEgresos;
 
-      ctx.send({
-        mes: now.toLocaleString('es-AR', { month: 'long', year: 'numeric' }),
-        totalIngresos,
-        totalEgresos,
-        totalDeducibles,
-        saldoEstimado,
+      return ctx.send({
+        status: 'success',
+        data: {
+          ingresos: totalIngresos,
+          egresos: totalEgresos,
+          balance: balanceNeto,
+          detalle: {
+            ingresos: ingresosSummary,
+            egresos: egresosSummary,
+          },
+        },
       });
     } catch (error) {
-      strapi.log.error('Error en /dashboard/summary:', error);
-      ctx.internalServerError('Error al generar resumen');
+      strapi.log.error('Error en dashboard summary:', error);
+      return ctx.internalServerError('Error al generar resumen del dashboard');
     }
   },
 };
