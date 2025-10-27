@@ -10,7 +10,7 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/egresos/:id',
+      path: '/egresos/:id(\\d+)',
       handler: 'egreso.findOne',
       config: { auth: false },
     },

@@ -10,7 +10,7 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/ingresos/:id',
+      path: '/ingresos/:id(\\d+)',
       handler: 'ingreso.findOne',
       config: { auth: false },
     },
