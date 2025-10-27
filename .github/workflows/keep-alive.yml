@@ -1,0 +1,17 @@
+name: Keep Montri Backend Alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Montri Backend
+        run: |
+          echo "Haciendo ping a Montri Backend..."
+          curl -fsS https://montri-backend.onrender.com/api/dashboard/summary \
+            -o /dev/null \
+            -w "Respuesta: %{http_code}\n"
