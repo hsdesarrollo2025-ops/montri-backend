@@ -6,8 +6,8 @@ module.exports = {
       method: "GET",
       path: "/egresos/summary",
       handler: "egresos-summary.find",
-      config: { auth: true },
+      // Strapi routing in this project validates JWT in the controller. Keep route public.
+      config: { auth: false },
     },
   ],
 };
-
