@@ -71,4 +71,65 @@ module.exports = {
       return ctx.internalServerError('Error al generar resumen');
     }
   },
+  async summaryMensual(ctx) {
+    try {
+      const userId = await getAuthUserId(ctx);
+      if (!userId) return ctx.unauthorized('No autorizado');
+
+      const data = await strapi.db
+        .query('api::ingreso.ingreso')
+        .findMany({
+          where: { usuario: userId },
+          select: ['monto', 'fecha'],
+        });
+
+      const meses = [
+        'Enero',
+        'Febrero',
+        'Marzo',
+        'Abril',
+        'Mayo',
+        'Junio',
+        'Julio',
+        'Agosto',
+        'Septiembre',
+        'Octubre',
+        'Noviembre',
+        'Diciembre',
+      ];
+
+      const safeNumber = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const safeDate = (v) => {
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      const acumulado = {};
+      const now = new Date();
+      const year = now.getFullYear();
+
+      (data || []).forEach((item) => {
+        const d = safeDate(item?.fecha);
+        if (!d || d.getFullYear() !== year) return;
+        const mesIndex = d.getMonth();
+        const mes = meses[mesIndex];
+        acumulado[mes] = (acumulado[mes] || 0) + safeNumber(item?.monto);
+      });
+
+      const mensual = meses
+        .map((mes) => ({ mes, monto: acumulado[mes] || 0 }))
+        .filter((x) => x.monto > 0);
+
+      const totalAnual = mensual.reduce((acc, cur) => acc + safeNumber(cur.monto), 0);
+
+      return ctx.send({ totalAnual, mensual });
+    } catch (err) {
+      strapi.log.error('Error en /ingresos/summary-mensual:', err);
+      return ctx.internalServerError('Error al obtener resumen mensual');
+    }
+  },
 };
