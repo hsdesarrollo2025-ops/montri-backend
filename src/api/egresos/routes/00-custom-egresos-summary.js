@@ -7,7 +7,7 @@ module.exports = {
       path: '/egresos/summary',
       handler: 'egresos-summary.find',
       config: {
-        // En este proyecto usamos validación JWT en el controlador
+        // En este proyecto, la validación JWT se hace en el controlador
         auth: false,
         policies: [],
         middlewares: [],

@@ -7,7 +7,7 @@ module.exports = {
       path: '/ingresos/summary',
       handler: 'ingresos-summary.find',
       config: {
-        // En este proyecto usamos validación JWT en el controlador
+        // En este proyecto, la validación JWT se hace en el controlador
         auth: false,
         policies: [],
         middlewares: [],
