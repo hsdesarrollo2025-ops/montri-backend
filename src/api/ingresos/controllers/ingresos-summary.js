@@ -1,13 +1,25 @@
 'use strict';
 
+async function getAuthUserId(ctx) {
+  const auth = ctx.request.header?.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) return null;
+  try {
+    const payload = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+    return payload?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   async find(ctx) {
     try {
-      const user = ctx.state?.user;
-      if (!user) return ctx.unauthorized('Usuario no autenticado');
+      const userId = await getAuthUserId(ctx);
+      if (!userId) return ctx.unauthorized('No autorizado');
 
       const all = await strapi.db.query('api::ingreso.ingreso').findMany({
-        where: { usuario: user.id },
+        where: { usuario: userId },
         orderBy: { fecha: 'desc' },
         select: ['id', 'descripcion', 'fecha', 'monto'],
       });
@@ -46,4 +58,3 @@ module.exports = {
     }
   },
 };
-
