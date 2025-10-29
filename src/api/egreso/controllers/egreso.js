@@ -60,12 +60,13 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
       const { data } = ctx.request.body;
       const newData = {
         ...data,
-        usuario: { id: user.id },
+        usuario: user.id,
       };
 
-      const entry = await strapi.db
-        .query('api::egreso.egreso')
-        .create({ data: newData });
+      const entry = await strapi.entityService.create('api::egreso.egreso', {
+        data: newData,
+        populate: ['usuario'],
+      });
       return entry;
     } catch (err) {
       ctx.throw(500, err);
