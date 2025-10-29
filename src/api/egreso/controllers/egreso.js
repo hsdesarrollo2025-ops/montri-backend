@@ -5,34 +5,21 @@ const jwt = require('jsonwebtoken');
 
 module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
   async find(ctx) {
-    const authHeader = ctx.request.header.authorization;
-    if (!authHeader) return ctx.unauthorized('Falta header Authorization');
-
-    const parts = authHeader.split(' ');
-    const token = parts.length === 2 ? parts[1] : authHeader.replace(/^Bearer\s+/i, '').trim();
-    let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
-    } catch (err) {
-      
-      return ctx.unauthorized('Token inválido o expirado');
+      const user = ctx.state.user;
+      if (!user) return ctx.unauthorized('No autorizado');
+
+      const data = await strapi.entityService.findMany('api::egreso.egreso', {
+        filters: { usuario: user.id },
+        populate: '*',
+        sort: { fecha: 'desc' },
+      });
+
+      return data;
+    } catch (error) {
+      strapi.log.error('Error en find de egresos:', error);
+      return ctx.internalServerError('Error al obtener egresos');
     }
-
-    const user = await strapi.db
-      .query('plugin::users-permissions.user')
-      .findOne({ where: { id: decoded.id } });
-    if (!user) return ctx.unauthorized('Usuario no encontrado');
-    
-
-    ctx.query = {
-      ...ctx.query,
-      filters: {
-        ...(ctx.query?.filters || {}),
-        usuario: { id: { $eq: user.id } },
-      },
-    };
-
-    return await super.find(ctx);
   },
 
   async create(ctx) {
