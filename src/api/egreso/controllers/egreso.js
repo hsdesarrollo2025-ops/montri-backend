@@ -8,7 +8,8 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
     const authHeader = ctx.request.header.authorization;
     if (!authHeader) return ctx.unauthorized('Falta header Authorization');
 
-    const token = authHeader.replace('Bearer ', '').trim();
+    const parts = authHeader.split(' ');
+    const token = parts.length === 2 ? parts[1] : authHeader.replace(/^Bearer\s+/i, '').trim();
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
@@ -39,7 +40,8 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
       const authHeader = ctx.request.header.authorization;
       if (!authHeader) return ctx.unauthorized('Falta header Authorization');
 
-      const token = authHeader.replace('Bearer ', '').trim();
+      const parts = authHeader.split(' ');
+      const token = parts.length === 2 ? parts[1] : authHeader.replace(/^Bearer\s+/i, '').trim();
       let decoded;
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
