@@ -18,19 +18,20 @@ module.exports = {
       method: 'POST',
       path: '/ingresos',
       handler: 'ingreso.create',
-      config: { auth: true },
+      // En Strapi v4, auth debe ser un objeto; usar `{}` habilita autenticación por defecto
+      config: { auth: {} },
     },
     {
       method: 'PUT',
       path: '/ingresos/:id',
       handler: 'ingreso.update',
-      config: { auth: false },
+      config: { auth: {} },
     },
     {
       method: 'DELETE',
       path: '/ingresos/:id',
       handler: 'ingreso.delete',
-      config: { auth: false },
+      config: { auth: {} },
     },
   ],
 };

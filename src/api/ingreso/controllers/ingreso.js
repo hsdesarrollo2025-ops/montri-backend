@@ -6,6 +6,7 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
   async create(ctx) {
     try {
       const user = ctx.state.user;
+      console.log('AUTH USER:', user);
       if (!user) {
         return ctx.unauthorized('Usuario no autenticado');
       }
