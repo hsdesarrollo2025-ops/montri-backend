@@ -6,32 +6,51 @@ module.exports = {
       method: 'GET',
       path: '/ingresos',
       handler: 'ingreso.find',
-      config: { auth: {} },
+      config: {
+        auth: {
+          strategies: ['api::users-permissions.jwt'],
+        },
+      },
     },
     {
       method: 'GET',
       path: '/ingresos/:id(\\d+)',
       handler: 'ingreso.findOne',
-      config: { auth: {} },
+      config: {
+        auth: {
+          strategies: ['api::users-permissions.jwt'],
+        },
+      },
     },
     {
       method: 'POST',
       path: '/ingresos',
       handler: 'ingreso.create',
-      // En Strapi v4, auth debe ser un objeto; usar `{}` habilita autenticación por defecto
-      config: { auth: {} },
+      config: {
+        auth: {
+          strategies: ['api::users-permissions.jwt'],
+        },
+      },
     },
     {
       method: 'PUT',
       path: '/ingresos/:id',
       handler: 'ingreso.update',
-      config: { auth: {} },
+      config: {
+        auth: {
+          strategies: ['api::users-permissions.jwt'],
+        },
+      },
     },
     {
       method: 'DELETE',
       path: '/ingresos/:id',
       handler: 'ingreso.delete',
-      config: { auth: {} },
+      config: {
+        auth: {
+          strategies: ['api::users-permissions.jwt'],
+        },
+      },
     },
   ],
 };
