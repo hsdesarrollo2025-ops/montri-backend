@@ -5,4 +5,9 @@ module.exports = ({ env }) => ({
       providerOptions: {},
     },
   },
+  'users-permissions': {
+    config: {
+      jwtSecret: env('JWT_SECRET', 'fallback-secret-montri'),
+    },
+  },
 });

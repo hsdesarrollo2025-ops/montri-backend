@@ -1,3 +1,4 @@
+console.log('🔐 JWT_SECRET activo:', process.env.JWT_SECRET || 'NO DEFINIDO');
 const seedTaxCategories = require('./api/tax-category/content-types/tax-category/seed-tax-categories');
 
 module.exports = {
