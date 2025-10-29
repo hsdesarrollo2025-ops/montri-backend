@@ -14,7 +14,7 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
     } catch (err) {
-      console.error('❌ Error verificando JWT:', err.message);
+      
       return ctx.unauthorized('Token inválido o expirado');
     }
 
@@ -22,7 +22,7 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
       .query('plugin::users-permissions.user')
       .findOne({ where: { id: decoded.id } });
     if (!user) return ctx.unauthorized('Usuario no encontrado');
-    console.log('✅ Token verificado para usuario:', user.id);
+    
 
     ctx.query = {
       ...ctx.query,
@@ -46,7 +46,7 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
       } catch (err) {
-        console.error('❌ Error verificando JWT:', err.message);
+        
         return ctx.unauthorized('Token inválido o expirado');
       }
 
@@ -54,9 +54,9 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
         .query('plugin::users-permissions.user')
         .findOne({ where: { id: decoded.id } });
       if (!user) return ctx.unauthorized('Usuario no encontrado');
-      console.log('✅ Token verificado para usuario:', user.id);
+      
 
-      console.log('🟢 Creando ingreso para usuario:', user.id);
+      
       const { data } = ctx.request.body;
       const newData = {
         ...data,
@@ -73,3 +73,9 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
     }
   },
 }));
+
+
+
+
+
+
