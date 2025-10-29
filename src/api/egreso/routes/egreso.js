@@ -7,9 +7,7 @@ module.exports = {
       path: '/egresos',
       handler: 'egreso.find',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -17,9 +15,7 @@ module.exports = {
       path: '/egresos/:id(\\d+)',
       handler: 'egreso.findOne',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -27,9 +23,7 @@ module.exports = {
       path: '/egresos',
       handler: 'egreso.create',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -37,9 +31,7 @@ module.exports = {
       path: '/egresos/:id',
       handler: 'egreso.update',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -47,11 +39,8 @@ module.exports = {
       path: '/egresos/:id',
       handler: 'egreso.delete',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
   ],
 };
-

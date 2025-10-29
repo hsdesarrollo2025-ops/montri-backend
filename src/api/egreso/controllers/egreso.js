@@ -4,6 +4,8 @@ const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
   async find(ctx) {
+    console.log('Authorization Header:', ctx.request.header.authorization);
+    console.log('User from state:', ctx.state.user);
     const user = ctx.state.user;
     if (!user) {
       return ctx.unauthorized('Token inválido o usuario no autenticado');
@@ -21,12 +23,10 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
   },
   async create(ctx) {
     try {
-      console.log('AUTH HEADER:', ctx.request.header.authorization);
-      console.log('CTX STATE USER:', ctx.state.user);
+      console.log('Authorization Header:', ctx.request.header.authorization);
+      console.log('User from state:', ctx.state.user);
       const user = ctx.state.user;
-      console.log('AUTH USER:', user);
       if (!user) {
-        console.log('CTX STATE:', ctx.state);
         return ctx.unauthorized('Token inválido o usuario no autenticado');
       }
 

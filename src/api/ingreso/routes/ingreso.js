@@ -7,9 +7,7 @@ module.exports = {
       path: '/ingresos',
       handler: 'ingreso.find',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -17,9 +15,7 @@ module.exports = {
       path: '/ingresos/:id(\\d+)',
       handler: 'ingreso.findOne',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -27,9 +23,7 @@ module.exports = {
       path: '/ingresos',
       handler: 'ingreso.create',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -37,9 +31,7 @@ module.exports = {
       path: '/ingresos/:id',
       handler: 'ingreso.update',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
     {
@@ -47,11 +39,8 @@ module.exports = {
       path: '/ingresos/:id',
       handler: 'ingreso.delete',
       config: {
-        auth: {
-          strategies: ['api::users-permissions.jwt'],
-        },
+        auth: { scope: ['authenticated'] },
       },
     },
   ],
 };
-
