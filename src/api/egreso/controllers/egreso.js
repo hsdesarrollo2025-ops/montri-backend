@@ -1,15 +1,27 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { verify } = require('@strapi/plugin-users-permissions/server/services/jwt');
 
 module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
   async find(ctx) {
-    console.log('Authorization Header:', ctx.request.header.authorization);
-    console.log('User from state:', ctx.state.user);
-    const user = ctx.state.user;
-    if (!user) {
-      return ctx.unauthorized('Token inválido o usuario no autenticado');
+    const authHeader = ctx.request.header.authorization;
+    if (!authHeader) return ctx.unauthorized('Falta header Authorization');
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    let decoded;
+    try {
+      decoded = await verify(token);
+    } catch (err) {
+      console.error('Error verificando JWT:', err);
+      return ctx.unauthorized('Token inválido o expirado');
     }
+
+    const user = await strapi.db
+      .query('plugin::users-permissions.user')
+      .findOne({ where: { id: decoded.id } });
+    if (!user) return ctx.unauthorized('Usuario no encontrado');
+    console.log('✅ Token verificado para usuario:', user.id);
 
     ctx.query = {
       ...ctx.query,
@@ -21,14 +33,26 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
 
     return await super.find(ctx);
   },
+
   async create(ctx) {
     try {
-      console.log('Authorization Header:', ctx.request.header.authorization);
-      console.log('User from state:', ctx.state.user);
-      const user = ctx.state.user;
-      if (!user) {
-        return ctx.unauthorized('Token inválido o usuario no autenticado');
+      const authHeader = ctx.request.header.authorization;
+      if (!authHeader) return ctx.unauthorized('Falta header Authorization');
+
+      const token = authHeader.replace('Bearer ', '').trim();
+      let decoded;
+      try {
+        decoded = await verify(token);
+      } catch (err) {
+        console.error('Error verificando JWT:', err);
+        return ctx.unauthorized('Token inválido o expirado');
       }
+
+      const user = await strapi.db
+        .query('plugin::users-permissions.user')
+        .findOne({ where: { id: decoded.id } });
+      if (!user) return ctx.unauthorized('Usuario no encontrado');
+      console.log('✅ Token verificado para usuario:', user.id);
 
       const { data } = ctx.request.body;
       const newData = {
@@ -36,11 +60,12 @@ module.exports = createCoreController('api::egreso.egreso', ({ strapi }) => ({
         usuario: user.id,
       };
 
-      const entity = await strapi.db.query('api::egreso.egreso').create({ data: newData });
+      const entity = await strapi.db
+        .query('api::egreso.egreso')
+        .create({ data: newData });
       return entity;
     } catch (err) {
       ctx.throw(500, err);
     }
   },
 }));
-
