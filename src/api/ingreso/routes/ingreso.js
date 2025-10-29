@@ -18,7 +18,7 @@ module.exports = {
       method: 'POST',
       path: '/ingresos',
       handler: 'ingreso.create',
-      config: { auth: false },
+      config: { auth: true },
     },
     {
       method: 'PUT',
