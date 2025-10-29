@@ -56,16 +56,17 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
       if (!user) return ctx.unauthorized('Usuario no encontrado');
       console.log('✅ Token verificado para usuario:', user.id);
 
+      console.log('🟢 Creando ingreso para usuario:', user.id);
       const { data } = ctx.request.body;
       const newData = {
         ...data,
-        usuario: user.id,
+        usuario: { id: user.id },
       };
 
-      const entity = await strapi.db
+      const entry = await strapi.db
         .query('api::ingreso.ingreso')
         .create({ data: newData });
-      return entity;
+      return entry;
     } catch (err) {
       ctx.throw(500, err);
     }
