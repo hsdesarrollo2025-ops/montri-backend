@@ -7,7 +7,7 @@ module.exports = ({ env }) => ({
   },
   'users-permissions': {
     config: {
-      jwtSecret: env('JWT_SECRET', 'fallback-secret-montri'),
+      jwtSecret: env('JWT_SECRET', 'montri-prod-secret-2025'),
     },
   },
 });

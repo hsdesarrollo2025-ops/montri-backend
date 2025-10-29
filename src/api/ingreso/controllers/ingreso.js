@@ -21,6 +21,8 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
   },
   async create(ctx) {
     try {
+      console.log('AUTH HEADER:', ctx.request.header.authorization);
+      console.log('CTX STATE USER:', ctx.state.user);
       const user = ctx.state.user;
       console.log('AUTH USER:', user);
       if (!user) {
