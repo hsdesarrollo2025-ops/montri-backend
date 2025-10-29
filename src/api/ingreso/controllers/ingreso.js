@@ -3,12 +3,29 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
+  async find(ctx) {
+    const user = ctx.state.user;
+    if (!user) {
+      return ctx.unauthorized('Token inválido o usuario no autenticado');
+    }
+
+    ctx.query = {
+      ...ctx.query,
+      filters: {
+        ...(ctx.query?.filters || {}),
+        usuario: { id: { $eq: user.id } },
+      },
+    };
+
+    return await super.find(ctx);
+  },
   async create(ctx) {
     try {
       const user = ctx.state.user;
       console.log('AUTH USER:', user);
       if (!user) {
-        return ctx.unauthorized('Usuario no autenticado');
+        console.log('CTX STATE:', ctx.state);
+        return ctx.unauthorized('Token inválido o usuario no autenticado');
       }
 
       const { data } = ctx.request.body;
@@ -17,8 +34,8 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
         usuario: user.id,
       };
 
-      const response = await strapi.service('api::ingreso.ingreso').create({ data: newData });
-      return response;
+      const entity = await strapi.db.query('api::ingreso.ingreso').create({ data: newData });
+      return entity;
     } catch (err) {
       ctx.throw(500, err);
     }

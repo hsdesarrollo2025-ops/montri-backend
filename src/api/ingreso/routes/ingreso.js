@@ -6,13 +6,13 @@ module.exports = {
       method: 'GET',
       path: '/ingresos',
       handler: 'ingreso.find',
-      config: { auth: false },
+      config: { auth: {} },
     },
     {
       method: 'GET',
       path: '/ingresos/:id(\\d+)',
       handler: 'ingreso.findOne',
-      config: { auth: false },
+      config: { auth: {} },
     },
     {
       method: 'POST',
