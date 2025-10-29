@@ -1,7 +1,7 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { verify } = require('@strapi/plugin-users-permissions/server/services/jwt');
+const jwt = require('jsonwebtoken');
 
 module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
   async find(ctx) {
@@ -11,9 +11,9 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
     const token = authHeader.replace('Bearer ', '').trim();
     let decoded;
     try {
-      decoded = await verify(token);
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
     } catch (err) {
-      console.error('Error verificando JWT:', err);
+      console.error('❌ Error verificando JWT:', err.message);
       return ctx.unauthorized('Token inválido o expirado');
     }
 
@@ -42,9 +42,9 @@ module.exports = createCoreController('api::ingreso.ingreso', ({ strapi }) => ({
       const token = authHeader.replace('Bearer ', '').trim();
       let decoded;
       try {
-        decoded = await verify(token);
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'montri-prod-secret-2025');
       } catch (err) {
-        console.error('Error verificando JWT:', err);
+        console.error('❌ Error verificando JWT:', err.message);
         return ctx.unauthorized('Token inválido o expirado');
       }
 
