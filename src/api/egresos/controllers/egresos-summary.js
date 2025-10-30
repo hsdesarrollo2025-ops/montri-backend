@@ -80,7 +80,12 @@ module.exports = {
           select: ['monto', 'fecha'],
         });
 
-      const meses = [
+      const safeNumber = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const mesesNombres = [
         'Enero',
         'Febrero',
         'Marzo',
@@ -95,33 +100,24 @@ module.exports = {
         'Diciembre',
       ];
 
-      const safeNumber = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-      };
-
-      const safeDate = (v) => {
-        const d = new Date(v);
-        return isNaN(d.getTime()) ? null : d;
-      };
-
-      const acumulado = {};
+      const { startOfYear, endOfYear, isWithinInterval, parseISO, getMonth } = require('date-fns');
       const now = new Date();
-      const year = now.getFullYear();
+      const inicioAnio = startOfYear(now);
+      const finAnio = endOfYear(now);
 
-      (data || []).forEach((item) => {
-        const d = safeDate(item?.fecha);
-        if (!d || d.getFullYear() !== year) return;
-        const mesIndex = d.getMonth();
-        const mes = meses[mesIndex];
-        acumulado[mes] = (acumulado[mes] || 0) + safeNumber(item?.monto);
+      const movimientosAnio = (data || []).filter((m) => {
+        const d = parseISO(String(m.fecha));
+        return isWithinInterval(d, { start: inicioAnio, end: finAnio });
       });
 
-      const mensual = meses
-        .map((mes) => ({ mes, monto: acumulado[mes] || 0 }))
-        .filter((x) => x.monto > 0);
+      const mensual = mesesNombres.map((mes, i) => ({
+        mes,
+        monto: (movimientosAnio || [])
+          .filter((m) => getMonth(parseISO(String(m.fecha))) === i)
+          .reduce((acc, m) => acc + safeNumber(m.monto), 0),
+      }));
 
-      const totalAnual = mensual.reduce((acc, cur) => acc + safeNumber(cur.monto), 0);
+      const totalAnual = mensual.reduce((acc, m) => acc + safeNumber(m.monto), 0);
 
       return ctx.send({ totalAnual, mensual });
     } catch (err) {
@@ -130,4 +126,3 @@ module.exports = {
     }
   },
 };
-
