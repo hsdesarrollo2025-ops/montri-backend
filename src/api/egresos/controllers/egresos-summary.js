@@ -1,5 +1,7 @@
 'use strict';
 
+const { startOfMonth, endOfMonth, parseISO, isWithinInterval } = require('date-fns');
+
 async function getAuthUserId(ctx) {
   const auth = ctx.request.header?.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
@@ -29,48 +31,43 @@ module.exports = {
         return Number.isFinite(n) ? n : 0;
       };
 
-      const safeDate = (v) => {
-        const d = new Date(v);
-        return isNaN(d.getTime()) ? null : d;
-      };
-
       const now = new Date();
-      const currentMonth = (all || []).filter((e) => {
-        const d = safeDate(e.fecha);
-        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      const inicioMes = startOfMonth(now);
+      const finMes = endOfMonth(now);
+
+      const movimientosMes = (all || []).filter((m) => {
+        const d = parseISO(String(m.fecha));
+        return isWithinInterval(d, { start: inicioMes, end: finMes });
       });
 
-      const totalMes = currentMonth.reduce((acc, e) => acc + safeNumber(e.monto), 0);
+      const semanas = [1, 2, 3, 4, 5].map((n) => ({ semana: n, monto: 0 }));
+      movimientosMes.forEach((m) => {
+        const day = new Date(m.fecha).getDate();
+        const weekOfMonth = Math.ceil((day - 1) / 7) + 1;
+        const idx = Math.min(weekOfMonth - 1, semanas.length - 1);
+        semanas[idx].monto += safeNumber(m.monto);
+      });
 
-      const semanal = [1, 2, 3, 4].map((sem) => ({
-        semana: sem,
-        monto: currentMonth
-          .filter((e) => {
-            const d = safeDate(e.fecha);
-            return d && Math.ceil(d.getDate() / 7) === sem;
-          })
-          .reduce((acc, e) => acc + safeNumber(e.monto), 0),
-      }));
+      const totalMes = movimientosMes.reduce((acc, m) => acc + safeNumber(m.monto), 0);
 
-      const ultimos = (all || [])
-        .filter((e) => safeDate(e.fecha))
+      const ultimos = movimientosMes
+        .slice()
+        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
         .slice(0, 5)
-        .map((e) => {
-          const d = safeDate(e.fecha);
-          return {
-            id: e.id,
-            descripcion: e.descripcion || 'Sin descripción',
-            fecha: d ? d.toISOString().slice(0, 10) : null,
-            monto: safeNumber(e.monto),
-          };
-        });
+        .map((m) => ({
+          id: m.id,
+          descripcion: m.descripcion,
+          fecha: m.fecha,
+          monto: safeNumber(m.monto),
+        }));
 
-      return ctx.send({ totalMes, semanal, ultimos });
+      return ctx.send({ totalMes, semanal: semanas, ultimos });
     } catch (err) {
       strapi.log.error('Error en /egresos/summary:', err);
       return ctx.internalServerError('Error al generar resumen');
     }
   },
+
   async summaryMensual(ctx) {
     try {
       const userId = await getAuthUserId(ctx);
@@ -133,3 +130,4 @@ module.exports = {
     }
   },
 };
+
