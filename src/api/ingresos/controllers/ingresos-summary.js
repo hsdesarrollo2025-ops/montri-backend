@@ -68,15 +68,24 @@ module.exports = {
         return 0;
       };
 
-      // Ventana del mes actual (comparación por clave YYYY-MM para mayor robustez)
-      const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Mes actual en zona horaria de negocio
+      const BUSINESS_TZ = process.env.BUSINESS_TZ || process.env.DASHBOARD_TZ || 'America/Argentina/Buenos_Aires';
+      const monthKeyInTZ = (date) => {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: BUSINESS_TZ,
+          year: 'numeric',
+          month: '2-digit',
+        }).formatToParts(date);
+        const y = parts.find((p) => p.type === 'year')?.value;
+        const m = parts.find((p) => p.type === 'month')?.value;
+        return y && m ? `${y}-${m}` : null;
+      };
+      const monthKey = monthKeyInTZ(new Date());
 
       const movimientosMes = (movimientos || []).filter((m) => {
         const fecha = parseFecha(m.fecha);
-        if (!fecha) return false;
-        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-        return key === monthKey;
+        if (!fecha || !monthKey) return false;
+        return monthKeyInTZ(fecha) === monthKey;
       });
 
       // Suma semanal en 5 buckets
