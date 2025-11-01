@@ -33,10 +33,11 @@ module.exports = {
       if (!userId) return ctx.unauthorized('No autorizado');
 
       // Traer todos los movimientos del usuario autenticado
-      const movimientos = await strapi.db.query('api::ingreso.ingreso').findMany({
-        where: { usuario: userId },
-        orderBy: { fecha: 'desc' },
-        select: ['id', 'descripcion', 'fecha', 'monto'],
+      // Usar entityService para alinearnos con el resto del proyecto
+      const movimientos = await strapi.entityService.findMany('api::ingreso.ingreso', {
+        filters: { usuario: userId },
+        sort: { fecha: 'desc' },
+        fields: ['id', 'descripcion', 'fecha', 'monto'],
       });
 
       // Parser tolerante de fecha (ISO o texto largo) normalizado a LOCAL mediodía
@@ -67,14 +68,15 @@ module.exports = {
         return 0;
       };
 
-      // Ventana del mes actual [start, nextMonth)
+      // Ventana del mes actual (comparación por clave YYYY-MM para mayor robustez)
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
       const movimientosMes = (movimientos || []).filter((m) => {
         const fecha = parseFecha(m.fecha);
-        return fecha && fecha >= start && fecha < nextMonth;
+        if (!fecha) return false;
+        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+        return key === monthKey;
       });
 
       // Suma semanal en 5 buckets
