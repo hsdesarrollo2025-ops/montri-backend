@@ -39,24 +39,42 @@ module.exports = {
         select: ['id', 'descripcion', 'fecha', 'monto'],
       });
 
-      // Parser tolerante de fecha (ISO o texto largo)
+      // Parser tolerante de fecha (ISO o texto largo) normalizado a LOCAL mediodía
       function parseFecha(fechaStr) {
-        const parsed = new Date(fechaStr);
-        if (!isNaN(parsed)) return parsed;
-        const cleaned = fechaStr?.replace(/,/g, '');
-        return new Date(cleaned);
+        if (!fechaStr) return null;
+        const s = String(fechaStr).trim();
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) {
+          const y = Number(m[1]);
+          const mo = Number(m[2]);
+          const d = Number(m[3]);
+          return new Date(y, (mo || 1) - 1, d || 1, 12, 0, 0, 0);
+        }
+        const direct = new Date(s);
+        if (!isNaN(direct)) return direct;
+        const cleaned = s.replace(/,/g, '');
+        const fallback = new Date(cleaned);
+        return isNaN(fallback) ? null : fallback;
       }
 
-      const safeNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+      const safeNumber = (v) => {
+        if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+        if (typeof v === 'string') {
+          const t = v.trim().replace(/\./g, '').replace(/,/g, '.');
+          const n = Number(t);
+          return Number.isFinite(n) ? n : 0;
+        }
+        return 0;
+      };
 
-      // Ventana del mes actual
+      // Ventana del mes actual [start, nextMonth)
       const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
 
       const movimientosMes = (movimientos || []).filter((m) => {
         const fecha = parseFecha(m.fecha);
-        return fecha >= startOfMonth && fecha <= endOfMonth;
+        return fecha && fecha >= start && fecha < nextMonth;
       });
 
       // Suma semanal en 5 buckets
