@@ -17,51 +17,55 @@ async function getAuthUserId(ctx) {
 module.exports = {
   async find(ctx) {
     try {
-      const userId = await getAuthUserId(ctx);
+      const userId = ctx.state?.user?.id;
       if (!userId) return ctx.unauthorized('No autorizado');
 
-      const all = await strapi.db.query('api::egreso.egreso').findMany({
+      // Traer todos los movimientos del usuario autenticado
+      const movimientos = await strapi.db.query('api::egreso.egreso').findMany({
         where: { usuario: userId },
         orderBy: { fecha: 'desc' },
         select: ['id', 'descripcion', 'fecha', 'monto'],
       });
 
-      const safeNumber = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-      };
+      // Parser tolerante de fecha (ISO o texto largo)
+      function parseFecha(fechaStr) {
+        const parsed = new Date(fechaStr);
+        if (!isNaN(parsed)) return parsed;
+        const cleaned = fechaStr?.replace(/,/g, '');
+        return new Date(cleaned);
+      }
 
+      const safeNumber = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+      // Ventana del mes actual
       const now = new Date();
-      const inicioMes = startOfMonth(now);
-      const finMes = endOfMonth(now);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      const movimientosMes = (all || []).filter((m) => {
-        const d = parseISO(String(m.fecha));
-        return isWithinInterval(d, { start: inicioMes, end: finMes });
+      const movimientosMes = (movimientos || []).filter((m) => {
+        const fecha = parseFecha(m.fecha);
+        return fecha >= startOfMonth && fecha <= endOfMonth;
       });
 
-      const semanas = [1, 2, 3, 4, 5].map((n) => ({ semana: n, monto: 0 }));
+      // Suma semanal en 5 buckets
+      const semanal = [1, 2, 3, 4, 5].map((n) => ({ semana: n, monto: 0 }));
       movimientosMes.forEach((m) => {
-        const day = new Date(m.fecha).getDate();
+        const fecha = parseFecha(m.fecha);
+        const day = fecha.getDate();
         const weekOfMonth = Math.ceil((day - 1) / 7) + 1;
-        const idx = Math.min(weekOfMonth - 1, semanas.length - 1);
-        semanas[idx].monto += safeNumber(m.monto);
+        const idx = Math.min(Math.max(weekOfMonth - 1, 0), semanal.length - 1);
+        semanal[idx].monto += safeNumber(m.monto);
       });
 
       const totalMes = movimientosMes.reduce((acc, m) => acc + safeNumber(m.monto), 0);
 
       const ultimos = movimientosMes
         .slice()
-        .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+        .sort((a, b) => parseFecha(b.fecha) - parseFecha(a.fecha))
         .slice(0, 5)
-        .map((m) => ({
-          id: m.id,
-          descripcion: m.descripcion,
-          fecha: m.fecha,
-          monto: safeNumber(m.monto),
-        }));
+        .map((m) => ({ id: m.id, descripcion: m.descripcion, fecha: m.fecha, monto: safeNumber(m.monto) }));
 
-      return ctx.send({ totalMes, semanal: semanas, ultimos });
+      return ctx.send({ totalMes, semanal, ultimos });
     } catch (err) {
       strapi.log.error('Error en /egresos/summary:', err);
       return ctx.internalServerError('Error al generar resumen');
