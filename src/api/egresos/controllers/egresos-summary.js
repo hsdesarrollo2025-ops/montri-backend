@@ -17,7 +17,19 @@ async function getAuthUserId(ctx) {
 module.exports = {
   async find(ctx) {
     try {
-      const userId = ctx.state?.user?.id;
+      let userId = ctx.state?.user?.id;
+      if (!userId) {
+        const auth = ctx.request.header?.authorization || '';
+        const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+        if (token) {
+          try {
+            const payload = await strapi.plugins['users-permissions'].services.jwt.verify(token);
+            userId = payload?.id;
+          } catch (e) {
+            // ignore invalid token
+          }
+        }
+      }
       if (!userId) return ctx.unauthorized('No autorizado');
 
       // Traer todos los movimientos del usuario autenticado
