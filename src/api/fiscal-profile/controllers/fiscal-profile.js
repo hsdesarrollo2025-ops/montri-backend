@@ -29,7 +29,7 @@ const init = async (ctx) => {
 
     // Fetch basic user data
     const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId, {
-      fields: ['firstName', 'lastName', 'email', 'cuit'],
+      fields: ['firstName', 'lastName', 'email'],
     });
 
     const now = new Date();
@@ -45,9 +45,9 @@ const init = async (ctx) => {
         firstName: user?.firstName || null,
         lastName: user?.lastName || null,
         email: user?.email || null,
-        cuit: user?.cuit || null,
-      },
-    });
+        cuit: null,
+    },
+  });
 
     ctx.body = { message: 'Perfil fiscal inicializado correctamente.', profile };
   } catch (error) {
@@ -449,4 +449,3 @@ module.exports = {
   getFiscalProfile,
   validateFiscalProfileStatus,
 };
-
