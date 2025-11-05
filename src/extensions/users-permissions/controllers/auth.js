@@ -61,10 +61,10 @@ module.exports = {
       acceptedTerms: acceptedTerms === true,
     };
 
-    const user = await strapi
-      .db
-      .query('plugin::users-permissions.user')
-      .create({ data: newUserData });
+    // Use entityService to ensure lifecycles run (password hashing)
+    const user = await strapi.entityService.create('plugin::users-permissions.user', {
+      data: newUserData,
+    });
 
     // Issue JWT
     const jwt = strapi.plugin('users-permissions').service('jwt').issue({ id: user.id });
