@@ -99,7 +99,7 @@ const updateSectionA = async (ctx) => {
     if (!/^[^@]+@[^@]+\.[a-zA-Z]{2,}$/.test(data.email || '')) errors.push('Email con formato inválido.');
     if (data.phone && !/^[0-9]{8,15}$/.test(data.phone)) errors.push('El teléfono debe tener entre 8 y 15 dígitos.');
 
-    if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
+    if (errors.length > 0) return ctx.unprocessableEntity('Validation error', { errors });
 
     const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
       data: {
@@ -227,7 +227,7 @@ const updateSectionC = async (ctx) => {
     if (data.notes && data.notes.length > 255)
       errors.push('El campo de observaciones no puede superar los 255 caracteres.');
 
-    if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
+    if (errors.length > 0) return ctx.unprocessableEntity('Validation error', { errors });
 
     const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
       data: {
@@ -417,7 +417,7 @@ module.exports = {
         delete data.category; // No aplica categoría para este régimen
       }
 
-      if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
+    if (errors.length > 0) return ctx.unprocessableEntity('Validation error', { errors });
 
       const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
         data: {
