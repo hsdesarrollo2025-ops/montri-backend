@@ -27,13 +27,23 @@ module.exports = {
     const lowerEmail = String(email).toLowerCase();
 
     // Check email uniqueness
-    const existing = await strapi
+    const existingByEmail = await strapi
       .db
       .query('plugin::users-permissions.user')
       .findOne({ where: { email: lowerEmail } });
 
-    if (existing) {
+    if (existingByEmail) {
       return ctx.conflict('Email already registered');
+    }
+
+    // Check username uniqueness
+    const existingByUsername = await strapi
+      .db
+      .query('plugin::users-permissions.user')
+      .findOne({ where: { username } });
+
+    if (existingByUsername) {
+      return ctx.conflict('Username already taken');
     }
 
     // Create user with custom fields
@@ -71,6 +81,7 @@ module.exports = {
       acceptedTerms: user.acceptedTerms,
     };
 
-    return ctx.send({ jwt, user: publicUser });
+    ctx.body = { jwt, user: publicUser };
+    return;
   },
 };
