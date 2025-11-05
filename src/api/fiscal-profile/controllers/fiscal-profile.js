@@ -18,18 +18,22 @@ const init = async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-    const existing = await strapi.db.query('api::fiscal-profile.fiscal-profile').findOne({ where: { user: userId } });
-    if (existing) {
+    // Check existing profile
+    const existing = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      limit: 1,
+    });
+    if (existing && existing.length > 0) {
       return ctx.conflict('El usuario ya tiene un perfil fiscal creado.');
     }
 
-    const user = await strapi.db.query('plugin::users-permissions.user').findOne({
-      where: { id: userId },
-      select: ['firstName', 'lastName', 'email', 'cuit'],
+    // Fetch basic user data
+    const user = await strapi.entityService.findOne('plugin::users-permissions.user', userId, {
+      fields: ['firstName', 'lastName', 'email', 'cuit'],
     });
 
     const now = new Date();
-    const profile = await strapi.db.query('api::fiscal-profile.fiscal-profile').create({
+    const profile = await strapi.entityService.create('api::fiscal-profile.fiscal-profile', {
       data: {
         user: userId,
         status: 'draft',
@@ -45,8 +49,12 @@ const init = async (ctx) => {
       },
     });
 
-    ctx.send({ message: 'Perfil fiscal inicializado correctamente.', profile });
+    ctx.body = { message: 'Perfil fiscal inicializado correctamente.', profile };
   } catch (error) {
+    // Handle unique constraint (one-to-one) to avoid 500 on race conditions
+    if (error && (error.code === 'SQLITE_CONSTRAINT' || error.code === '23505')) {
+      return ctx.conflict('El usuario ya tiene un perfil fiscal creado.');
+    }
     strapi.log.error('Error al inicializar fiscal-profile:', error);
     ctx.internalServerError('Ocurrió un error al crear el perfil fiscal.');
   }
@@ -57,7 +65,11 @@ const updateSectionA = async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-    const profile = await strapi.db.query('api::fiscal-profile.fiscal-profile').findOne({ where: { user: userId } });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      limit: 1,
+    });
+    const profile = profiles[0];
     if (!profile) return ctx.notFound('No se encontró el perfil fiscal del usuario.');
 
     const data = ctx.request.body || {};
@@ -89,8 +101,7 @@ const updateSectionA = async (ctx) => {
 
     if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
 
-    const updated = await strapi.db.query('api::fiscal-profile.fiscal-profile').update({
-      where: { id: profile.id },
+    const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
       data: {
         ...data,
         completedSection: 'A',
@@ -99,7 +110,7 @@ const updateSectionA = async (ctx) => {
       },
     });
 
-    ctx.send({ message: 'Sección A guardada correctamente.', profile: updated });
+    ctx.body = { message: 'Sección A guardada correctamente.', profile: updated };
   } catch (error) {
     strapi.log.error('Error al guardar Sección A (fiscal-profile):', error);
     ctx.internalServerError('Ocurrió un error al guardar la sección.');
@@ -114,10 +125,14 @@ const getByUser = async (ctx) => {
     const { userId } = ctx.params;
     if (String(authUserId) !== String(userId)) return ctx.forbidden('No autorizado.');
 
-    const profile = await strapi.db.query('api::fiscal-profile.fiscal-profile').findOne({ where: { user: userId } });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      limit: 1,
+    });
+    const profile = profiles[0];
     if (!profile) return ctx.notFound('No se encontró el perfil fiscal del usuario.');
 
-    ctx.send({ profile });
+    ctx.body = { profile };
   } catch (error) {
     strapi.log.error('Error al obtener perfil por usuario:', error);
     ctx.internalServerError('Ocurrió un error al obtener el perfil.');
@@ -129,14 +144,17 @@ const finalize = async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-    const profile = await strapi.db.query('api::fiscal-profile.fiscal-profile').findOne({ where: { user: userId } });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      limit: 1,
+    });
+    const profile = profiles[0];
     if (!profile) return ctx.notFound('No se encontró el perfil fiscal del usuario.');
 
-    const updated = await strapi.db.query('api::fiscal-profile.fiscal-profile').update({
-      where: { id: profile.id },
+    const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
       data: { status: 'complete', progress: 100, updatedDate: new Date() },
     });
-    ctx.send({ message: 'Perfil fiscal finalizado correctamente.', profile: updated });
+    ctx.body = { message: 'Perfil fiscal finalizado correctamente.', profile: updated };
   } catch (error) {
     strapi.log.error('Error al finalizar perfil fiscal:', error);
     ctx.internalServerError('Ocurrió un error al finalizar el perfil.');
@@ -154,12 +172,12 @@ const validateCuit = async (ctx) => {
     return verificador === nums[10];
   })();
   if (!valid) return ctx.badRequest('El CUIT ingresado no es válido.');
-  ctx.send({ message: 'CUIT válido.' });
+  ctx.body = { message: 'CUIT válido.' };
 };
 
 const validateCategory = async (ctx) => {
   // Placeholder de validación (falta especificación). Devuelve 200 con mensaje.
-  ctx.send({ message: 'Validación de categoría no implementada aún.' });
+  ctx.body = { message: 'Validación de categoría no implementada aún.' };
 };
 
 const getFiscalProfile = async (ctx) => {
@@ -171,13 +189,16 @@ const getFiscalProfile = async (ctx) => {
     if (!authUserId) return ctx.unauthorized('Usuario no autenticado.');
     if (String(authUserId) !== String(userId)) return ctx.forbidden('No autorizado.');
 
-    const profile = await strapi.db
-      .query('api::fiscal-profile.fiscal-profile')
-      .findOne({ where: { user: userId }, populate: true });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      populate: true,
+      limit: 1,
+    });
 
+    const profile = profiles[0];
     if (!profile) return ctx.notFound('El usuario no tiene un perfil fiscal creado.');
 
-    ctx.send({ message: 'Perfil fiscal obtenido correctamente.', profile });
+    ctx.body = { message: 'Perfil fiscal obtenido correctamente.', profile };
   } catch (error) {
     strapi.log.error('Error al obtener perfil fiscal:', error);
     ctx.internalServerError('Ocurrió un error al obtener el perfil fiscal.');
@@ -189,9 +210,11 @@ const updateSectionC = async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-    const profile = await strapi.db
-      .query('api::fiscal-profile.fiscal-profile')
-      .findOne({ where: { user: userId } });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      limit: 1,
+    });
+    const profile = profiles[0];
     if (!profile) return ctx.notFound('No se encontró el perfil fiscal del usuario.');
 
     const data = ctx.request.body || {};
@@ -206,25 +229,22 @@ const updateSectionC = async (ctx) => {
 
     if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
 
-    const updated = await strapi.db
-      .query('api::fiscal-profile.fiscal-profile')
-      .update({
-        where: { id: profile.id },
-        data: {
-          acceptsAccuracy: data.acceptsAccuracy,
-          acceptsTerms: data.acceptsTerms,
-          notes: data.notes || null,
-          completedSection: 'C',
-          progress: 100,
-          status: 'complete',
-          updatedDate: new Date(),
-        },
-      });
+    const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
+      data: {
+        acceptsAccuracy: data.acceptsAccuracy,
+        acceptsTerms: data.acceptsTerms,
+        notes: data.notes || null,
+        completedSection: 'C',
+        progress: 100,
+        status: 'complete',
+        updatedDate: new Date(),
+      },
+    });
 
-    ctx.send({
+    ctx.body = {
       message: 'Sección C guardada correctamente. Perfil fiscal completado.',
       profile: updated,
-    });
+    };
   } catch (error) {
     strapi.log.error('Error al guardar Sección C:', error);
     ctx.internalServerError('Ocurrió un error al guardar la sección.');
@@ -236,18 +256,22 @@ const validateFiscalProfileStatus = async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-    const profile = await strapi.db
-      .query('api::fiscal-profile.fiscal-profile')
-      .findOne({ where: { user: userId }, select: ['id', 'status', 'completedSection', 'progress'] });
+    const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+      filters: { user: userId },
+      fields: ['id', 'status', 'completedSection', 'progress'],
+      limit: 1,
+    });
+    const profile = profiles[0];
 
     if (!profile) {
-      return ctx.send({
+      ctx.body = {
         hasProfile: false,
         message: 'El usuario no tiene un perfil fiscal creado.',
         status: 'none',
         completedSection: null,
         nextSection: 'A',
-      });
+      };
+      return;
     }
 
     let nextSection = null;
@@ -257,7 +281,7 @@ const validateFiscalProfileStatus = async (ctx) => {
       else if (profile.completedSection === 'B') nextSection = 'C';
     }
 
-    ctx.send({
+    ctx.body = {
       hasProfile: true,
       status: profile.status,
       completedSection: profile.completedSection,
@@ -267,7 +291,7 @@ const validateFiscalProfileStatus = async (ctx) => {
         profile.status === 'complete'
           ? 'El perfil fiscal está completo.'
           : `El perfil fiscal está en progreso. Falta completar la sección ${nextSection}.`,
-    });
+    };
   } catch (error) {
     strapi.log.error('Error al validar estado del perfil fiscal:', error);
     ctx.internalServerError('Ocurrió un error al validar el estado del perfil fiscal.');
@@ -283,13 +307,15 @@ module.exports = {
       const authUserId = ctx.state?.user?.id || (await getAuthUserId(ctx));
       if (!authUserId) return ctx.unauthorized('No autenticado');
 
-      const profile = await strapi.db
-        .query('api::fiscal-profile.fiscal-profile')
-        .findOne({ where: { user: authUserId } });
+      const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+        filters: { user: authUserId },
+        limit: 1,
+      });
+      const profile = profiles[0];
 
       if (!profile) return ctx.notFound('Perfil fiscal no encontrado');
 
-      return ctx.send({ message: 'Perfil fiscal obtenido correctamente.', profile });
+      return (ctx.body = { message: 'Perfil fiscal obtenido correctamente.', profile });
     } catch (error) {
       strapi.log.error('Error en endpoint /fiscal-profile/me:', error);
       return ctx.internalServerError('Ocurrió un error al obtener el perfil fiscal.');
@@ -300,9 +326,11 @@ module.exports = {
       const userId = await getAuthUserId(ctx);
       if (!userId) return ctx.unauthorized('Usuario no autenticado.');
 
-      const profile = await strapi.db
-        .query('api::fiscal-profile.fiscal-profile')
-        .findOne({ where: { user: userId } });
+      const profiles = await strapi.entityService.findMany('api::fiscal-profile.fiscal-profile', {
+        filters: { user: userId },
+        limit: 1,
+      });
+      const profile = profiles[0];
       if (!profile) return ctx.notFound('No se encontró el perfil fiscal del usuario.');
 
       const data = ctx.request.body || {};
@@ -340,22 +368,22 @@ module.exports = {
 
       // Validaciones base
       if (!isDraft) {
-      if (!['Monotributista', 'Responsible Inscripto'].includes(data.regime))
-        errors.push('El régimen fiscal es inválido.');
+        if (!['Monotributista', 'Responsible Inscripto'].includes(data.regime))
+          errors.push('El régimen fiscal es inválido.');
 
-      if (!data.startDate) errors.push('La fecha de alta es obligatoria.');
-      else if (new Date(data.startDate) > new Date())
-        errors.push('La fecha de alta no puede ser futura.');
+        if (!data.startDate) errors.push('La fecha de alta es obligatoria.');
+        else if (new Date(data.startDate) > new Date())
+          errors.push('La fecha de alta no puede ser futura.');
 
-      if (!Number.isFinite(revenueNumber) || revenueNumber <= 0)
-        errors.push('La facturación anual estimada debe ser mayor que 0.');
+        if (!Number.isFinite(revenueNumber) || revenueNumber <= 0)
+          errors.push('La facturación anual estimada debe ser mayor que 0.');
 
-      if (!data.mainActivity) errors.push('Debe indicar la actividad principal.');
-      if (!data.activityProvince) errors.push('Debe seleccionar la provincia de actividad.');
-      if (!['Final Consumer', 'Registered Taxpayer', 'Mixed'].includes(data.clientType))
-        errors.push('El tipo de clientes es inválido.');
-      if (data.monthlyOperations != null && Number(data.monthlyOperations) < 0)
-        errors.push('Las operaciones mensuales no pueden ser negativas.');
+        if (!data.mainActivity) errors.push('Debe indicar la actividad principal.');
+        if (!data.activityProvince) errors.push('Debe seleccionar la provincia de actividad.');
+        if (!['Final Consumer', 'Registered Taxpayer', 'Mixed'].includes(data.clientType))
+          errors.push('El tipo de clientes es inválido.');
+        if (data.monthlyOperations != null && Number(data.monthlyOperations) < 0)
+          errors.push('Las operaciones mensuales no pueden ser negativas.');
       }
 
       // Validaciones específicas por régimen
@@ -391,27 +419,24 @@ module.exports = {
 
       if (errors.length > 0) return ctx.unprocessableEntity({ errores: errors });
 
-      const updated = await strapi.db
-        .query('api::fiscal-profile.fiscal-profile')
-        .update({
-          where: { id: profile.id },
-          data: {
-            regime: data.regime,
-            startDate: data.startDate,
-            mainActivity: data.mainActivity,
-            activityProvince: data.activityProvince,
-            clientType: data.clientType,
-            monthlyOperations: data.monthlyOperations,
-            hasEmployees: data.hasEmployees,
-            category: data.category,
-            annualRevenue: revenueNumber,
-            completedSection: 'B',
-            progress: 66,
-            updatedDate: new Date(),
-          },
-        });
+      const updated = await strapi.entityService.update('api::fiscal-profile.fiscal-profile', profile.id, {
+        data: {
+          regime: data.regime,
+          startDate: data.startDate,
+          mainActivity: data.mainActivity,
+          activityProvince: data.activityProvince,
+          clientType: data.clientType,
+          monthlyOperations: data.monthlyOperations,
+          hasEmployees: data.hasEmployees,
+          category: data.category,
+          annualRevenue: revenueNumber,
+          completedSection: 'B',
+          progress: 66,
+          updatedDate: new Date(),
+        },
+      });
 
-      ctx.send({ message: 'Sección B guardada correctamente.', profile: updated });
+      ctx.body = { message: 'Sección B guardada correctamente.', profile: updated };
     } catch (error) {
       strapi.log.error('Error al guardar Sección B:', error);
       ctx.internalServerError('Ocurrió un error al guardar la sección.');
@@ -424,3 +449,4 @@ module.exports = {
   getFiscalProfile,
   validateFiscalProfileStatus,
 };
+
