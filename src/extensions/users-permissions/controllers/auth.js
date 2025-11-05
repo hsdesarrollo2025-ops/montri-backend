@@ -79,6 +79,7 @@ module.exports = {
       cuit: user.cuit,
       planType: user.planType,
       acceptedTerms: user.acceptedTerms,
+      confirmed: user.confirmed,
     };
 
     ctx.body = { jwt, user: publicUser };
